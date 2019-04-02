@@ -1,0 +1,4 @@
+{
+  "hmmsearch.hmmDBFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.hmm",
+  "hmmsearch.sequenceFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.sto"
+}
