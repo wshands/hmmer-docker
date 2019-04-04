@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     htop \
     vim
 
-LABEL maintainer="jshands@ucsc.edu"
+LABEL maintainer="wshands@gmail.com"
 
 WORKDIR root
 

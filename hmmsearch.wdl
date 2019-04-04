@@ -46,6 +46,7 @@ workflow hmmsearch {
   String outputFileNameDefault = select_first([outputFileName, "myHMMER_hmmsearch.txt"  ])
 
   # Get the size of the standard reference file
+  # Calling size seems to make the https input URL fail - at least on a Mac
   #Float fileDiskSize = size(hmmDBFile, "GB") + size(sequenceFile, "GB")
 
   call hmmsearchTask { input:
@@ -60,6 +61,12 @@ workflow hmmsearch {
   call displayOutput{ input:
                     outputFile = hmmsearchTask.outputFile
        }
+
+  meta {
+      author : "Walt Shands"
+      email : "wshands@gmail.com"
+      description: "This is the workflow WDL for HMMER hmmsearch"
+   }
 
   output {
     File hmmsearchOutput = hmmsearchTask.outputFile
