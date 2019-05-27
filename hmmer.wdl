@@ -11,7 +11,12 @@ task hmmerTask {
   Float diskSize
   String dockerImageName
 
-  command {
+  # We have to use a trick to make Cromwell
+  # skip substitution when using the bash ${<variable} syntax
+  # See https://gatkforums.broadinstitute.org/wdl/discussion/comment/44570#Comment_44570 
+  String dollar = "$"
+
+  command <<<
       # Set the exit code of a pipeline to that of the rightmost command
       # to exit with a non-zero status, or zero if all commands of the pipeline exit
       set -o pipefail
@@ -23,21 +28,35 @@ task hmmerTask {
       set -o xtrace
       #to turn off echo do 'set +o xtrace'
 
+      # Check to see whether the  DB file is gzipped
+      gzip -t ${DBFile} 2>/dev/null
+      # If it is gzipped then unzip it; phmmer requires it be unzipped
+      if [[ $? -eq 0 ]]
+      then
+         unzippedDBFile="unzippedDBFile"
+         gunzip -c ${DBFile} > ${dollar}{unzippedDBFile}
+      else
+         unzppedDBFile="${DBFile}"
+      fi
+
       case ${hmmerCommand} in
         "hmmscan")
-          hmmpress ${DBFile}
-          hmmscan ${options} ${DBFile} ${sequenceFile} > ${outputFileName}
+          hmmpress ${dollar}{unzippedDBFile}
+          hmmscan ${options} ${dollar}{unzippedDBFile} ${sequenceFile} > ${outputFileName}
           ;;
         "hmmsearch")
-          hmmsearch ${options} ${DBFile} ${sequenceFile} > ${outputFileName}
+          hmmsearch ${options} ${dollar}{unzippedDBFile} ${sequenceFile} > ${outputFileName}
           ;;
         "phmmer")
-          phmmer ${options} ${sequenceFile} ${DBFile} > ${outputFileName}
+          phmmer ${options} ${sequenceFile} ${dollar}{unzippedDBFile} > ${outputFileName}
+          ;;
+        "jackhmmer")
+          jackhmmer ${options} ${sequenceFile} ${dollar}{unzippedDBFile} > ${outputFileName}
           ;;
         *)
           echo "HMMER command ${hmmerCommand} is not known"
       esac
-  }
+  >>>
   output {
     File outputFile = "${outputFileName}"
 }
