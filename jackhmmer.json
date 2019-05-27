@@ -1,5 +1,5 @@
 {
   "hmmer.hmmerCommand": "jackhmmer",
-  "hmmer.DBFile": "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz",
+  "hmmer.DBFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins45.fa",
   "hmmer.sequenceFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.sto"
 }
