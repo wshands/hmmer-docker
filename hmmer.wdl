@@ -29,6 +29,10 @@ task hmmerTask {
       #to turn off echo do 'set +o xtrace'
 
       # Check to see whether the  DB file is gzipped
+      # Turn off exit on command failure so we can continue
+      # when the gzip test fails for a non gzipped file
+      set +o pipefail
+      set +e
       gzip -t ${DBFile} 2>/dev/null
       # If it is gzipped then unzip it; phmmer requires it be unzipped
       if [[ $? -eq 0 ]]
@@ -36,8 +40,12 @@ task hmmerTask {
          unzippedDBFile="unzippedDBFile"
          gunzip -c ${DBFile} > ${dollar}{unzippedDBFile}
       else
-         unzppedDBFile="${DBFile}"
+         unzippedDBFile="${DBFile}"
       fi
+      # to exit with a non-zero status, or zero if all commands of the pipeline exit
+      set -o pipefail
+      # cause a bash script to exit immediately when a command fails
+      set -e
 
       case ${hmmerCommand} in
         "hmmscan")
