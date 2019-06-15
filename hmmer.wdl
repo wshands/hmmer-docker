@@ -4,6 +4,12 @@ task hmmerTask {
   File sequenceFile
   String outputFileName
   String? options
+
+  #String aMultipleAlignmentsFileName
+  #String tbloutFileName
+  #String domtbloutFileName
+  #String pfamtbloutFileName
+
   Int preemptibleTries
   Int maxRetries
   Int numCPUs
@@ -50,16 +56,24 @@ task hmmerTask {
       case ${hmmerCommand} in
         "hmmscan")
           hmmpress ${dollar}{unzippedDBFile}
-          hmmscan ${options} ${dollar}{unzippedDBFile} ${sequenceFile} > ${outputFileName}
+          hmmscan -o ${outputFileName} ${options} ${dollar}{unzippedDBFile} ${sequenceFile}
+          ;;
+        "nhmmscan")
+          hmmpress ${dollar}{unzippedDBFile}
+          nhmmscan -o ${outputFileName} ${options} ${dollar}{unzippedDBFile} ${sequenceFile}
+          ;;
+        "nhmmer")
+          hmmpress ${dollar}{unzippedDBFile}
+          nhmmer -o ${outputFileName} ${options} ${dollar}{unzippedDBFile} ${sequenceFile}
           ;;
         "hmmsearch")
-          hmmsearch ${options} ${dollar}{unzippedDBFile} ${sequenceFile} > ${outputFileName}
+          hmmsearch -o ${outputFileName} ${options} ${dollar}{unzippedDBFile} ${sequenceFile}
           ;;
         "phmmer")
-          phmmer ${options} ${sequenceFile} ${dollar}{unzippedDBFile} > ${outputFileName}
+          phmmer -o ${outputFileName} ${options} ${sequenceFile} ${dollar}{unzippedDBFile}
           ;;
         "jackhmmer")
-          jackhmmer ${options} ${sequenceFile} ${dollar}{unzippedDBFile} > ${outputFileName}
+          jackhmmer -o ${outputFileName} ${options} ${sequenceFile} ${dollar}{unzippedDBFile}
           ;;
         *)
           echo "HMMER command ${hmmerCommand} is not known"
@@ -67,7 +81,13 @@ task hmmerTask {
   >>>
   output {
     File outputFile = "${outputFileName}"
-}
+    Array[File] allOutputFiles = glob("*.*")
+
+    #File aMultipleAlignmentsFile = "${aMultipleAlignmentsFileName}"
+    #File tbloutFile = "${tbloutFileName}"
+    #File domtbloutFile = "${domtbloutFileName}"
+    #File pfamtbloutFile = "${pfamtbloutFileName}"
+  }
 
  runtime {
     maxRetries: maxRetries
@@ -88,6 +108,11 @@ workflow hmmer {
   String? dockerImageName
   String? outputFileName
 
+  #String? aMultipleAlignments
+  #String? tblout
+  #String? domtblout
+  #String? pfamtblout
+
   Int? preemptibleTries
   Int preemptibleTriesDefault = select_first([preemptibleTries, 3])
   Int? maxRetries
@@ -107,6 +132,14 @@ workflow hmmer {
   String dockerImageNameDefault = select_first([dockerImageName, "quay.io/wshands/hmmer-docker:feature_hmmerdockernew"  ])
   String outputFileNameDefault = select_first([outputFileName, "myHMMER_${hmmerCommand}.txt"  ])
 
+  # Concatenate all the output table file options to the other options
+  #String allOptions1 = select_first([options, ""])
+  #String allOptions2 =  allOptions1 + if (defined(aMultipleAlignments)) then " -A ${aMultipleAlignments}" else " -A ${hmmerCommand}_multiplealignments.txt"
+  #String allOptions3 = allOptions2 + if (defined(tblout)) then " --tblout ${tblout}" else " --tblout ${hmmerCommand}_tblout.txt"
+ # String allOptions4 = allOptions3 + if (defined(domtblout)) then " --domtblout ${domtblout}" else " --domtblout ${hmmerCommand}_domtblout.txt"
+  #String allOptions = allOptions4 + if (defined(pfamtblout)) then " --pfamtblout ${pfamtblout}" else " --pfamtblout ${hmmerCommand}_pfamtblout.txt"
+
+  #String defaultMultipleAlignmentsFileName = select_first([aMultipleAlignmentsFileName, 
   # Get the size of the standard reference file
   # Calling size seems to make the https input URL fail - at least on a Mac
   #Float fileDiskSize = size(DBFile, "GB") + size(sequenceFile, "GB")
@@ -115,6 +148,12 @@ workflow hmmer {
                     hmmerCommand = hmmerCommand,
                     DBFile = DBFile,
                     options = options,
+
+                    #aMultipleAlignmentsFileName = aMultipleAlignments,
+                    #tbloutFileName = tblout,
+                    #domtbloutFileName = domtblout,
+                    #pfamtbloutFileName = pfamtblout,
+
                     sequenceFile = sequenceFile,
                     outputFileName = outputFileNameDefault,
                     diskSize = additionalDisk,
@@ -134,6 +173,12 @@ workflow hmmer {
 
   output {
     File hmmerOutput = hmmerTask.outputFile
+    Array[File] allOutputFiles = hmmerTask.allOutputFiles
+
+    #File aMultipleAlignmentsFile = hmmerTask.aMultipleAlignmentsFile
+    #File tbloutFile = hmmerTask.tbloutFile
+    #File domtbloutFile = hmmerTask.domtbloutFile
+    #File pfamtbloutFile = hmmerTask.pfamtbloutFile
   }
 }
 

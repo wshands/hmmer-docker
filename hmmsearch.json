@@ -1,5 +1,6 @@
 {
   "hmmer.hmmerCommand": "hmmsearch",
   "hmmer.DBFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.hmm",
-  "hmmer.sequenceFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.sto"
+  "hmmer.sequenceFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.sto",
+  "hmmer.options": "--cpu 4 --tblout mytblout.txt"
 }
