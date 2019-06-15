@@ -4,15 +4,15 @@
 
 #### To build the image:
 ```bash
-docker build --tag <name of the image> .
+docker build --tag my_hmmer .
 ```
 
 #### To run a HMMER command:
 ```bash
-docker run -it <name of the image>:latest <HMMER command>
+docker run -it my_hmmer:latest <HMMER command>
 ```
 
 #### E.g to run hmmsearch:
 ```bash
-docker run -it <name of the image>:latest hmmsearch
+docker run -it my_hmmer:latest hmmsearch
 ```
