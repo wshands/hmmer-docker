@@ -13,6 +13,7 @@ https://docs.docker.com/get-started/
 
 #### Install Docker on your machine: 
 https://docs.docker.com/docker-for-mac/install/
+
 https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04
 
 
@@ -30,5 +31,5 @@ docker run -it my_hmmer:latest <HMMER command>
 
 #### E.g to run hmmsearch:
 ```bash
-docker run -it my_hmmer:latest hmmsearch
+docker run -it my_hmmer:latest hmmsearch -h
 ```
