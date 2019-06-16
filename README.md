@@ -12,7 +12,6 @@ https://docs.docker.com/get-started/
 ### Quickstart instructions:
 
 #### Install Docker on your machine: 
-Here are some links that explain the installation process:
 https://docs.docker.com/docker-for-mac/install/
 https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-18-04
 
