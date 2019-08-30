@@ -1,0 +1,5 @@
+{
+  "hmmer.hmmerCommand": "nhmmscan",
+  "hmmer.DBFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/MADE1.hmm",
+  "hmmer.sequenceFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/dna_target.fa"
+}

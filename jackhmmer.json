@@ -1,0 +1,5 @@
+{
+  "hmmer.hmmerCommand": "jackhmmer",
+  "hmmer.DBFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins45.fa",
+  "hmmer.sequenceFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.sto"
+}
