@@ -2,6 +2,6 @@
   "hmmer.hmmerCommand": "hmmsearch",
   "hmmer.DBFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.hmm",
   "hmmer.sequenceFile": "https://raw.githubusercontent.com/EddyRivasLab/hmmer/master/tutorial/globins4.sto",
-  "hmmer.aMultipleAlignmentFileName": "my_alignment_file.txt",
+  "hmmer.multipleAlignmentFileName": "my_alignment_file.txt",
   "hmmer.options": "--cpu 4 -A myAout.txt"
 }

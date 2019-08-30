@@ -1,27 +1,27 @@
+version 1.0
 task hmmerTask {
-  String hmmerCommand
-  File DBFile
-  File sequenceFile
-  String outputFileName
-  String? options
+  input {
+    String hmmerCommand
+    File DBFile
+    File sequenceFile
+    String? options
 
-  String aMultipleAlignmentFileName
-  #String? options1 = if (defined(aMultipleAlignmentFileName)) then inputOptions + " -A ${aMultipleAlignmentFileName}" else inputOptions
+    String outputFileName
+    String multipleAlignmentFileName
+    String tbloutFileName
+    String domtbloutFileName
+    String pfamtbloutFileName
 
-  String tbloutFileName
-  #String? options = if (defined(tbloutFileName)) then options1 + " -A ${tbloutFileName}" else options1
-  String domtbloutFileName
-  String pfamtbloutFileName
-
-  Int preemptibleTries
-  Int maxRetries
-  Int numCPUs
-  Float memory
-  Float diskSize
-  String dockerImageName
+    Int preemptibleTries
+    Int maxRetries
+    Int numCPUs
+    Float memory
+    Float diskSize
+    String dockerImageName
+ }
 
   # We have to use a trick to make Cromwell
-  # skip substitution when using the bash ${<variable} syntax
+  # skip substitution when using the bash ~{<variable} syntax
   # See https://gatkforums.broadinstitute.org/wdl/discussion/comment/44570#Comment_44570
   String dollar = "$"
   command <<<
@@ -41,218 +41,202 @@ task hmmerTask {
       # when the gzip test fails for a non gzipped file
       set +o pipefail
       set +e
-      gzip -t ${DBFile} 2>/dev/null
-      # If it is gzipped then unzip it; phmmer requires it be unzipped
+      gzip -t ~{DBFile} 2>/dev/null
+      # If it is gzipped then unzip it; e.g. phmmer requires it be unzipped
       if [[ $? -eq 0 ]]
       then
          unzippedDBFile="unzippedDBFile"
-         gunzip -c ${DBFile} > ${dollar}{unzippedDBFile}
+         gunzip -c ~{DBFile} > ~{dollar}{unzippedDBFile}
       else
-         unzippedDBFile="${DBFile}"
+         unzippedDBFile="~{DBFile}"
       fi
+
+      gzip -t ~{sequenceFile} 2>/dev/null
+      # If it is gzipped then unzip it; e.g. hmmscan requires it be unzipped
+      if [[ $? -eq 0 ]]
+      then
+         unzippedSequenceFile="unzippedSequenceFile"
+         gunzip -c ~{sequenceFile} > ~{dollar}{unzippedSequenceFile}
+      else
+         unzippedSequenceFile="~{sequenceFile}"
+      fi
+
+
       # to exit with a non-zero status, or zero if all commands of the pipeline exit
       set -o pipefail
       # cause a bash script to exit immediately when a command fails
       set -e
 
-      # If the output file option is not in the options string
-      # use the default file name or the one the user
-      # placed in the named variable
-      alloptions="${options}"
+      alloptions="~{options}"
 
       SetOptionOutputFile()
       {
           commandOptions=$1
           option=$2
-          outputFileName=$3
-
-          if [[ ! "${dollar}{commandOptions}" =~ "${dollar}{option} " ]]
+          fileName=$3
+          # If the output file option is not in the options string
+          # use the default file name or the one the user
+          # placed in the named variable
+          if [[ ! "~{dollar}{commandOptions}" =~ "~{dollar}{option} " ]]
           then
+              # E.g. --tblout is not in the command options string
               printf "Option is not in options string"
               # test if the length of the string is non zero
-              if [[ -n "${dollar}{outputFileName}" ]]
+              if [[ -n "~{dollar}{fileName}" ]]
               then
-                  printf "Setting option ${dollar}{option} file to %s in options string\n" ${dollar}{outputFileName}
-                  commandOptions="${dollar}{commandOptions} ${dollar}{option} ${dollar}{outputFileName}"
+                  # The option output file name variable has been set by the user
+                  # E.g. tbloutFileName is set
+                  printf "Setting option ~{dollar}{option} file to %s in options string\n" "~{dollar}{fileName}"
+                  commandOptions="~{dollar}{commandOptions} ~{dollar}{option} ~{dollar}{fileName}"
               else
-                  outputFileName="${hmmerCommand}_multiplealignments.txt"
-                  printf "Setting option ${dollar}{option} file to %s in options string\n" ${dollar}{outputFileName}
-                  commandOptions="${dollar}{commandOptions} ${dollar}{option} ${dollar}{outputFileName}"
+                  # There is no output file set in the command options string
+                  # and the user has not set the option output file variable
+                  # so we must set the option output file to a default file name
+                  # since WDL cannot use an optional output file variable
+                  fileName="~{hmmerCommand}~{dollar}{option}OutputFile.txt"
+                  printf "Setting option ~{dollar}{option} file to %s in options string\n" "~{dollar}{fileName}"
+                  commandOptions="~{dollar}{commandOptions} ~{dollar}{option} ~{dollar}{fileName}"
               fi
           else
               printf "Option is in options string"
+              # E.g. --tblout is in the command options string
               # test if the length of the string is non zero
-              if [[ -n "${dollar}{outputFileName}" ]]
+              if [[ -n "~{dollar}{fileName}" ]]
               then
-                  printf "Setting option ${dollar}{option} file to %s in options string\n" ${dollar}{outputFileName}
-                  #commandOptions="${dollar}{commandOptions/-A .* /-A ${aMultipleAlignmentFileName}}"
+                  # The option output file name variable has been set by the user
+                  # E.g. tbloutFileName is set
+                  printf "Setting option ~{dollar}{option} file to %s in options string\n" "~{dollar}{fileName}"
+                  # E.g. commandOptions="~{dollar}{commandOptions/-A .* /-A ~{multipleAlignmentFileName}}"
                   #https://stackoverflow.com/questions/13210880/replace-one-substring-for-another-string-in-shell-script
-                  commandOptions="${dollar}{commandOptions/${dollar}{option}[[:space:]+][^[:space:]]*/${dollar}{option} ${dollar}{outputFileName}}"
+                  commandOptions="~{dollar}{commandOptions/~{dollar}{option}[[:space:]+][^[:space:]]*/~{dollar}{option} ~{dollar}{fileName}}"
               else
+                  # The output file is set in the command options string
+                  # and the user has not set the option output file variable
                   # Find out what the name of the output file is so we can
                   # put it in the output section
-                  outputFileName=$(echo "${dollar}{commandOptions}" | sed "s/.*${dollar}{option}[[:space:]+]\([^[:space:]]*\)/\1/g")
-                  #commandOptions=$(echo "${dollar}{commandOptions}" | sed "s/-A[[:space:]+][^[:space:]]*/-A ${aMultipleAlignmentFileName}/g")
+                  fileName=$(echo "~{dollar}{commandOptions}" | sed "s/.*~{dollar}{option}[[:space:]+]\([^[:space:]]*\)/\1/g")
+                  #commandOptions=$(echo "~{dollar}{commandOptions}" | sed "s/-A[[:space:]+][^[:space:]]*/-A ~{multipleAlignmentFileName}/g")
               fi
           fi
-          echo "${dollar}{outputFileName}" > outputFileName"${dollar}{option}".txt
+          #echo "~{dollar}{fileName}" > fileName"~{dollar}{option}".txt
 
-          alloptions="${dollar}{commandOptions}"
+          alloptions="~{dollar}{commandOptions}"
       }
 
+      # hmmscan does not have the -A option
+      #if [[ "~{hmmerCommand}" != "hmmscan" ]]
+      #then
+      #    SetOptionOutputFile "~{dollar}{alloptions}" "-A" "~{multipleAlignmentFileName}"
+      #fi
+      SetOptionOutputFile "~{dollar}{alloptions}" "-o" "~{outputFileName}"
+      SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
+      SetOptionOutputFile "~{dollar}{alloptions}" "--domtblout" "~{domtbloutFileName}"
+      SetOptionOutputFile "~{dollar}{alloptions}" "--pfamtblout" "~{pfamtbloutFileName}"
 
-      SetOptionOutputFile "${dollar}{alloptions}" "-A" "${aMultipleAlignmentFileName}"
-      SetOptionOutputFile "${dollar}{alloptions}" "--tblout" "${tbloutFileName}"
-      SetOptionOutputFile "${dollar}{alloptions}" "--domtblout" "${domtbloutFileName}"
-      SetOptionOutputFile "${dollar}{alloptions}" "--pfamtblout" "${pfamtbloutFileName}"
-
-
-#      if [[ ! "${options}" =~ "--tblout " ]]
-#      then
-#          alloptions="${dollar}{alloptions} --tblout ${tbloutFileName}"
-#      else
-#          #alloptions="${dollar}{alloptions/--tblout .*[ $]/--tblout ${tbloutFileName}}"
-#          alloptions=$(echo "${dollar}{alloptions}" | sed "s/--tblout[[:space:]+][^[:space:]]*/--tblout ${tbloutFileName}/g")
-#      fi
-#
-#      if [[ ! "${options}" =~ "--domtblout " ]]
-#      then
-#          alloptions="${dollar}{alloptions} --domtblout ${domtbloutFileName}"
-#      else
-#          #alloptions="${dollar}{alloptions/--domtblout .*[ $]/--domtblout ${domtbloutFileName}}"
-#          alloptions=$(echo "${dollar}{alloptions}" | sed "s/--domtblout[[:space:]+][^[:space:]]*/--domtblout ${domtbloutFileName}/g")
-#      fi
-#
-#      if [[ ! "${options}" =~ "--pfamtblout " ]]
-#      then
-#          alloptions="${dollar}{alloptions} --pfamtblout ${pfamtbloutFileName}"
-#      else
-#          #alloptions="${dollar}{alloptions/--pfamtblout .*[ $]/--pfamtblout ${pfamtbloutFileName}}"
-#          alloptions=$(echo "${dollar}{alloptions}" | sed "s/--pfamtblout[[:space:]+][^[:space:]]*/--pfamtblout ${pfamtbloutFileName}/g")
-#      fi
-#
-
-      case ${hmmerCommand} in
+      case ~{hmmerCommand} in
         "hmmscan")
-          hmmpress ${dollar}{unzippedDBFile}
-          hmmscan -o ${outputFileName} ${dollar}{alloptions} ${dollar}{unzippedDBFile} ${sequenceFile}
+          # Redirect all output (stdout and stderr) to /dev/null using /dev/null 2>&1
+          # https://unix.stackexchange.com/questions/119648/redirecting-to-dev-null
+          hmmpress ~{dollar}{unzippedDBFile}
+          hmmscan  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
         "nhmmscan")
-          hmmpress ${dollar}{unzippedDBFile}
-          nhmmscan -o ${outputFileName} ${dollar}{alloptions} ${dollar}{unzippedDBFile} ${sequenceFile}
+          hmmpress ~{dollar}{unzippedDBFile}
+          nhmmscan  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
         "nhmmer")
-          hmmpress ${dollar}{unzippedDBFile}
-          nhmmer -o ${outputFileName} ${dollar}{alloptions} ${dollar}{unzippedDBFile} ${sequenceFile}
+          hmmpress ~{dollar}{unzippedDBFile}
+          nhmmer  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
         "hmmsearch")
-          hmmsearch -o ${outputFileName} ${dollar}{alloptions} ${dollar}{unzippedDBFile} ${sequenceFile}
+          hmmsearch  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
         "phmmer")
-          phmmer -o ${outputFileName} ${dollar}{alloptions} ${sequenceFile} ${dollar}{unzippedDBFile}
+          phmmer  ~{dollar}{alloptions} ~{dollar}{unzippedSequenceFile} ~{dollar}{unzippedDBFile}
           ;;
         "jackhmmer")
-          jackhmmer -o ${outputFileName} ${dollar}{alloptions} ${sequenceFile} ${dollar}{unzippedDBFile}
+          jackhmmer  ~{dollar}{alloptions} ~{dollar}{unzippedSequenceFile} ~{dollar}{unzippedDBFile}
           ;;
         *)
-          echo "HMMER command ${hmmerCommand} is not known"
+          echo "HMMER command ~{hmmerCommand} is not known"
       esac
+
+      # Print the output to stdout with line feeds
+      # https://unix.stackexchange.com/questions/164508/why-do-newline-characters-get-lost-when-using-command-substitution
+      cat "~{outputFileName}"
+
   >>>
   output {
-    File outputFile = "${outputFileName}"
-    Array[File] allOutputFiles = glob("*.*")
+    Array[File] allOutputFiles = glob("*.txt")
 
-    File aMultipleAlignmentFile = read_string("outputFileName-A.txt")
-    File tbloutFile =  "${tbloutFileName}"
-    File domtbloutFile = "${domtbloutFileName}"
-    File pfamtbloutFile = "${pfamtbloutFileName}"
+    # We cannot specify this as an output file becuase some commands
+    # such as hmmscan do not have the -A option to product the multiple
+    # alignment file
+    #File multipleAlignmentFile = "~{outputFileName-A.txt}"
+
+    File tbloutFile =  "~{tbloutFileName}"
+    File outputFile = "~{outputFileName}"
+    File domtbloutFile = "~{domtbloutFileName}"
+    File pfamtbloutFile = "~{pfamtbloutFileName}"
+    String hmmerStdout = read_string(stdout())
   }
 
  runtime {
     maxRetries: maxRetries
     preemptible: preemptibleTries
-    memory: sub(memory, "\\..*", "") + " GB"
-    cpu: sub(numCPUs, "\\..*", "")
-    disks: "local-disk " + sub(diskSize, "\\..*", "") + " HDD"
+    memory: memory + " GB"
+    cpu: numCPUs
+    disks: "local-disk " + ceil(diskSize) + " HDD"
     zones: "us-central1-a us-central1-b us-east1-d us-central1-c us-central1-f us-east1-c"
     docker: dockerImageName
   }
 }
 
 workflow hmmer {
-  String hmmerCommand
-  String? options
-  File DBFile
-  File sequenceFile
-  String? dockerImageName
-  String? outputFileName
+  input {
+      String hmmerCommand
+      String? options
+      File DBFile
+      File sequenceFile
+      String dockerImageName = "quay.io/wshands/hmmer-docker:feature_hmmerdockernew"
+      String outputFileName = "~{hmmerCommand}_output.txt"
 
-  # If you provide the -A multiple alignment file name in
-  # this variable do not also specify -A in the options variable
-  String? aMultipleAlignmentFileName
-  String defaultMultipleAlignmentFileName = select_first([aMultipleAlignmentFileName, "${hmmerCommand}_multiplealignments.txt"])
-  String? tbloutFileName
-  String defaultTblOutFileName = select_first([tbloutFileName, "${hmmerCommand}_tblout.txt"])
+      # If you provide the -A multiple alignment file name in
+      # this variable do not also specify -A in the options variable
+      String multipleAlignmentFileName = "~{hmmerCommand}_multiplealignments.txt"
+      String tblOutFileName = "~{hmmerCommand}_tblout.txt"
+      String domTblOutFileName = "~{hmmerCommand}_domtblout.txt"
+      String pfamTblOutFileName = "~{hmmerCommand}_pfamtblout.txt"
 
-  String? domtbloutFileName
-  String defaultDomTblOutFileName = select_first([domtbloutFileName, "${hmmerCommand}_domtblout.txt"])
+      Int preemptibleTries = 1
+      Int maxRetries = 0
+      Int numCPUs = 4
+      Float memory = 10
 
-  String? pfamtbloutFileName
-  String defaultPfamTblOutFileName = select_first([pfamtbloutFileName, "${hmmerCommand}_pfamtblout.txt"])
-
-  Int? preemptibleTries
-  Int preemptibleTriesDefault = select_first([preemptibleTries, 1])
-  Int? maxRetries
-  Int maxRetriesDefault = select_first([maxRetries, 1])
-  Int? numCPUs
-  Int numCPUsDefault = select_first([numCPUs, 4])
-  Float? memory
-  Float memoryDefault = select_first([memory, 10])
-
-  # Optional input to increase all disk sizes in case of outlier sample with strange size behavior
-  Int? increaseDiskSize
-
-  # Some tasks need wiggle room, and we also need to add a small amount of disk to prevent getting a
-  # Cromwell error from asking for 0 disk when the input is less than 1GB
-  Int additionalDisk = select_first([increaseDiskSize, 20])
-
-  String dockerImageNameDefault = select_first([dockerImageName, "quay.io/wshands/hmmer-docker:feature_hmmerdockernew"  ])
-  String outputFileNameDefault = select_first([outputFileName, "myHMMER_${hmmerCommand}_output.txt"  ])
-
-  # Concatenate all the output table file options to the other options
-  #String allOptions = options + " -A ${defaultMultipleAlignmentFileName}" + " --tblout ${defaultTblOutFileName}"
-  #                     + " --domtblout ${defaultDomTblOutFileName}" + " --pfamtblout ${defaultPfamTblOutFileName}"
-  #String allOptions = options + " -A ${defaultMultipleAlignmentFileName}" +
-  #                     " --domtblout ${defaultDomTblOutFileName}" + " --pfamtblout ${defaultPfamTblOutFileName}"
- #String allOptions2 =  options + if (defined(aMultipleAlignmentsFileName)) then " -A ${aMultipleAlignmentsFileName}" else " -A ${hmmerCommand}_multiplealignments.txt"
-  #String allOptions3 = allOptions2 + if (defined(tbloutFileName)) then " --tblout ${tbloutFileName}" else " --tblout ${hmmerCommand}_tblout.txt"
-  #String allOptions4 = allOptions3 + if (defined(domtbloutFileName)) then " --domtblout ${domtbloutFileName}" else " --domtblout ${hmmerCommand}_domtblout.txt"
-  #String allOptions = allOptions4 + if (defined(pfamtbloutFileName)) then " --pfamtblout ${pfamtbloutFileName}" else " --pfamtblout ${hmmerCommand}_pfamtblout.txt"
-
-  #String defaultMultipleAlignmentsFileName = select_first([aMultipleAlignmentsFileName, 
-  # Get the size of the standard reference file
-  # Calling size seems to make the https input URL fail - at least on a Mac
-  #Float fileDiskSize = size(DBFile, "GB") + size(sequenceFile, "GB")
+      # Some tasks need wiggle room, and we also need to add a small amount of disk to prevent getting a
+      # Cromwell error from asking for 0 disk when the input is less than 1GB
+      Int additionalDisk = 20
+  }
 
   call hmmerTask { input:
                     hmmerCommand = hmmerCommand,
                     DBFile = DBFile,
+                    sequenceFile = sequenceFile,
+
                     options = options,
 
-                    aMultipleAlignmentFileName = defaultMultipleAlignmentFileName,
-                    tbloutFileName = defaultTblOutFileName,
-                    domtbloutFileName = defaultDomTblOutFileName,
-                    pfamtbloutFileName = defaultPfamTblOutFileName,
+                    outputFileName = outputFileName,
+                    multipleAlignmentFileName = multipleAlignmentFileName,
+                    tbloutFileName = tblOutFileName,
+                    domtbloutFileName = domTblOutFileName,
+                    pfamtbloutFileName = pfamTblOutFileName,
 
-                    sequenceFile = sequenceFile,
-                    outputFileName = outputFileNameDefault,
-                    diskSize = additionalDisk,
-                    preemptibleTries = preemptibleTriesDefault,
-                    maxRetries = maxRetriesDefault,
-                    numCPUs = numCPUsDefault,
-                    memory = memoryDefault,
-                    #diskSize = fileDiskSize + additionalDisk,
-                    dockerImageName = dockerImageNameDefault
+                    diskSize = size(DBFile, "GB") + size(sequenceFile, "GB") + additionalDisk,
+                    preemptibleTries = preemptibleTries,
+                    maxRetries = maxRetries,
+                    numCPUs = numCPUs,
+                    memory = memory,
+                    dockerImageName = dockerImageName
        }
 
   meta {
@@ -262,13 +246,19 @@ workflow hmmer {
    }
 
   output {
-    File hmmerOutput = hmmerTask.outputFile
     Array[File] allOutputFiles = hmmerTask.allOutputFiles
 
-    File aMultipleAlignmentFile = hmmerTask.aMultipleAlignmentFile
+
+    # We cannot specify this as an output file becuase some commands
+    # such as hmmscan do not have the -A option to product the multiple
+    # alignment file
+    #File multipleAlignmentFile = hmmerTask.multipleAlignmentFile
+
+    File hmmerOutput = hmmerTask.outputFile
     File tbloutFileFile = hmmerTask.tbloutFile
     File domtbloutFile = hmmerTask.domtbloutFile
     File pfamtbloutFile = hmmerTask.pfamtbloutFile
+    String hmmerStdout = hmmerTask.hmmerStdout
   }
 }
 
