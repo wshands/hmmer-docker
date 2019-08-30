@@ -10,7 +10,12 @@ task hmmerTask {
     String multipleAlignmentFileName
     String tbloutFileName
     String domtbloutFileName
+    String dfamtbloutFileName
     String pfamtbloutFileName
+    String aliscoresoutFileName
+    String chkhmmFileName
+    String chkaliFileName
+    String hmmoutFileName
 
     Int preemptibleTries
     Int maxRetries
@@ -105,9 +110,8 @@ task hmmerTask {
                   # The option output file name variable has been set by the user
                   # E.g. tbloutFileName is set
                   printf "Setting option ~{dollar}{option} file to %s in options string\n" "~{dollar}{fileName}"
-                  # E.g. commandOptions="~{dollar}{commandOptions/-A .* /-A ~{multipleAlignmentFileName}}"
-                  #https://stackoverflow.com/questions/13210880/replace-one-substring-for-another-string-in-shell-script
-                  commandOptions="~{dollar}{commandOptions/~{dollar}{option}[[:space:]+][^[:space:]]*/~{dollar}{option} ~{dollar}{fileName}}"
+                  #https://stackoverflow.com/questions/14194702/replace-substring-with-sed
+                  commandOptions=$(echo "~{dollar}{commandOptions}" | sed "s/~{dollar}{option}[[:space:]+][^[:space:]]*/~{dollar}{option} ~{dollar}{fileName}/g")
               else
                   # The output file is set in the command options string
                   # and the user has not set the option output file variable
@@ -123,40 +127,65 @@ task hmmerTask {
       MESSAGE="If this text is present it means HMMER did not write anything"
       MESSAGE="$MESSAGE to this file; probably because ~{hmmerCommand} does not support the option that"
       MESSAGE="$MESSAGE generates this file as an output."
-
-      # hmmscan does not have the -A option
-      if [[ "~{hmmerCommand}" != "hmmscan" ]]
-      then
-          SetOptionOutputFile "~{dollar}{alloptions}" "-A" "~{multipleAlignmentFileName}"
-      else
           echo "~{dollar}{MESSAGE}"  > "~{multipleAlignmentFileName}"
-      fi
 
       SetOptionOutputFile "~{dollar}{alloptions}" "-o" "~{outputFileName}"
-      SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
-      SetOptionOutputFile "~{dollar}{alloptions}" "--domtblout" "~{domtbloutFileName}"
-      SetOptionOutputFile "~{dollar}{alloptions}" "--pfamtblout" "~{pfamtbloutFileName}"
+
+      # Initialize output files
+      echo "~{dollar}{MESSAGE}"  > "~{multipleAlignmentFileName}"
+      echo "~{dollar}{MESSAGE}"  > "~{tbloutFileName}"
+      echo "~{dollar}{MESSAGE}"  > "~{domtbloutFileName}"
+      echo "~{dollar}{MESSAGE}"  > "~{dfamtbloutFileName}"
+      echo "~{dollar}{MESSAGE}"  > "~{pfamtbloutFileName}"
+      echo "~{dollar}{MESSAGE}"  > "~{aliscoresoutFileName}"
+      echo "~{dollar}{MESSAGE}"  > "~{chkhmmFileName}"
+      echo "~{dollar}{MESSAGE}"  > "~{chkaliFileName}"
+      echo "~{dollar}{MESSAGE}"  > "~{hmmoutFileName}"
 
       case ~{hmmerCommand} in
         "hmmscan")
+          SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--domtblout" "~{domtbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--pfamtblout" "~{pfamtbloutFileName}"
           hmmpress ~{dollar}{unzippedDBFile}
           hmmscan  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
         "nhmmscan")
+          SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--dfamtblout" "~{dfamtbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--aliscoresout" "~{aliscoresoutFileName}"
           hmmpress ~{dollar}{unzippedDBFile}
           nhmmscan  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
         "nhmmer")
+          SetOptionOutputFile "~{dollar}{alloptions}" "-A" "~{multipleAlignmentFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--dfamtblout" "~{dfamtbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--aliscoresout" "~{aliscoresoutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--hmmout" "~{hmmoutFileName}"
           hmmpress ~{dollar}{unzippedDBFile}
           nhmmer  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
         "hmmsearch")
+          SetOptionOutputFile "~{dollar}{alloptions}" "-A" "~{multipleAlignmentFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--domtblout" "~{domtbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--pfamtblout" "~{pfamtbloutFileName}"
           hmmsearch  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
         "phmmer")
+          SetOptionOutputFile "~{dollar}{alloptions}" "-A" "~{multipleAlignmentFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--domtblout" "~{domtbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--pfamtblout" "~{pfamtbloutFileName}"
           phmmer  ~{dollar}{alloptions} ~{dollar}{unzippedSequenceFile} ~{dollar}{unzippedDBFile}
           ;;
         "jackhmmer")
+          SetOptionOutputFile "~{dollar}{alloptions}" "-A" "~{multipleAlignmentFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--domtblout" "~{domtbloutFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--chkhmm" "~{chkhmmFileName}"
+          SetOptionOutputFile "~{dollar}{alloptions}" "--chkali" "~{chkaliFileName}"
           jackhmmer  ~{dollar}{alloptions} ~{dollar}{unzippedSequenceFile} ~{dollar}{unzippedDBFile}
           ;;
         *)
@@ -172,11 +201,16 @@ task hmmerTask {
   output {
     Array[File] allOutputFiles = glob("*.txt")
 
+    File outputFile = "~{outputFileName}"
     File multipleAlignmentFile = "~{multipleAlignmentFileName}"
     File tbloutFile =  "~{tbloutFileName}"
-    File outputFile = "~{outputFileName}"
     File domtbloutFile = "~{domtbloutFileName}"
+    File dfamtbloutFile = "~{dfamtbloutFileName}"
     File pfamtbloutFile = "~{pfamtbloutFileName}"
+    File aliscoresoutFile = "~{aliscoresoutFileName}"
+    File chkhmmFile = "~{chkhmmFileName}"
+    File chkaliFile = "~{chkaliFileName}"
+    File hmmoutFile = "~{hmmoutFileName}"
 
     String hmmerStdout = read_string(stdout())
   }
@@ -206,7 +240,12 @@ workflow hmmer {
       String multipleAlignmentFileName = "~{hmmerCommand}_multiplealignments.txt"
       String tblOutFileName = "~{hmmerCommand}_tblout.txt"
       String domTblOutFileName = "~{hmmerCommand}_domtblout.txt"
+      String dfamTblOutFileName = "~{hmmerCommand}_dfamtblout.txt"
       String pfamTblOutFileName = "~{hmmerCommand}_pfamtblout.txt"
+      String aliscoresoutFileName = "~{hmmerCommand}_aliscoresout.txt"
+      String chkhmmFileName = "~{hmmerCommand}_chkhmm.txt"
+      String chkaliFileName = "~{hmmerCommand}_chkali.txt"
+      String hmmoutFileName = "~{hmmerCommand}_hmmout.txt"
 
       Int preemptibleTries = 1
       Int maxRetries = 0
@@ -229,7 +268,12 @@ workflow hmmer {
                     multipleAlignmentFileName = multipleAlignmentFileName,
                     tbloutFileName = tblOutFileName,
                     domtbloutFileName = domTblOutFileName,
+                    dfamtbloutFileName = dfamTblOutFileName,
                     pfamtbloutFileName = pfamTblOutFileName,
+                    aliscoresoutFileName = aliscoresoutFileName,
+                    chkhmmFileName = chkhmmFileName,
+                    chkaliFileName = chkaliFileName,
+                    hmmoutFileName = hmmoutFileName,
 
                     diskSize = size(DBFile, "GB") + size(sequenceFile, "GB") + additionalDisk,
                     preemptibleTries = preemptibleTries,
@@ -248,11 +292,16 @@ workflow hmmer {
   output {
     Array[File] allOutputFiles = hmmerTask.allOutputFiles
 
-    File multipleAlignmentFile = hmmerTask.multipleAlignmentFile
     File hmmerOutput = hmmerTask.outputFile
+    File multipleAlignmentFile = hmmerTask.multipleAlignmentFile
     File tbloutFileFile = hmmerTask.tbloutFile
     File domtbloutFile = hmmerTask.domtbloutFile
+    File dfamtbloutFile = hmmerTask.dfamtbloutFile
     File pfamtbloutFile = hmmerTask.pfamtbloutFile
+    File aliscoresoutFile = hmmerTask.aliscoresoutFile
+    File chkhmmFile = hmmerTask.chkhmmFile
+    File chkaliFile = hmmerTask.chkaliFile
+    File hmmoutFile = hmmerTask.hmmoutFile
 
     String hmmerStdout = hmmerTask.hmmerStdout
   }
