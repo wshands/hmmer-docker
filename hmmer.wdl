@@ -61,7 +61,6 @@ task hmmerTask {
          unzippedSequenceFile="~{sequenceFile}"
       fi
 
-
       # to exit with a non-zero status, or zero if all commands of the pipeline exit
       set -o pipefail
       # cause a bash script to exit immediately when a command fails
@@ -118,16 +117,21 @@ task hmmerTask {
                   #commandOptions=$(echo "~{dollar}{commandOptions}" | sed "s/-A[[:space:]+][^[:space:]]*/-A ~{multipleAlignmentFileName}/g")
               fi
           fi
-          #echo "~{dollar}{fileName}" > fileName"~{dollar}{option}".txt
-
           alloptions="~{dollar}{commandOptions}"
       }
 
+      MESSAGE="If this text is present it means HMMER did not write anything"
+      MESSAGE="$MESSAGE to this file; probably because ~{hmmerCommand} does not support the option that"
+      MESSAGE="$MESSAGE generates this file as an output."
+
       # hmmscan does not have the -A option
-      #if [[ "~{hmmerCommand}" != "hmmscan" ]]
-      #then
-      #    SetOptionOutputFile "~{dollar}{alloptions}" "-A" "~{multipleAlignmentFileName}"
-      #fi
+      if [[ "~{hmmerCommand}" != "hmmscan" ]]
+      then
+          SetOptionOutputFile "~{dollar}{alloptions}" "-A" "~{multipleAlignmentFileName}"
+      else
+          echo "~{dollar}{MESSAGE}"  > "~{multipleAlignmentFileName}"
+      fi
+
       SetOptionOutputFile "~{dollar}{alloptions}" "-o" "~{outputFileName}"
       SetOptionOutputFile "~{dollar}{alloptions}" "--tblout" "~{tbloutFileName}"
       SetOptionOutputFile "~{dollar}{alloptions}" "--domtblout" "~{domtbloutFileName}"
@@ -135,8 +139,6 @@ task hmmerTask {
 
       case ~{hmmerCommand} in
         "hmmscan")
-          # Redirect all output (stdout and stderr) to /dev/null using /dev/null 2>&1
-          # https://unix.stackexchange.com/questions/119648/redirecting-to-dev-null
           hmmpress ~{dollar}{unzippedDBFile}
           hmmscan  ~{dollar}{alloptions} ~{dollar}{unzippedDBFile} ~{dollar}{unzippedSequenceFile}
           ;;
@@ -161,7 +163,8 @@ task hmmerTask {
           echo "HMMER command ~{hmmerCommand} is not known"
       esac
 
-      # Print the output to stdout with line feeds
+      # Print the output to stdout; there should be an output file containing stdout
+      # TODO: somehow get Cromwell to include line feeds with line feeds
       # https://unix.stackexchange.com/questions/164508/why-do-newline-characters-get-lost-when-using-command-substitution
       cat "~{outputFileName}"
 
@@ -169,15 +172,12 @@ task hmmerTask {
   output {
     Array[File] allOutputFiles = glob("*.txt")
 
-    # We cannot specify this as an output file becuase some commands
-    # such as hmmscan do not have the -A option to product the multiple
-    # alignment file
-    #File multipleAlignmentFile = "~{outputFileName-A.txt}"
-
+    File multipleAlignmentFile = "~{multipleAlignmentFileName}"
     File tbloutFile =  "~{tbloutFileName}"
     File outputFile = "~{outputFileName}"
     File domtbloutFile = "~{domtbloutFileName}"
     File pfamtbloutFile = "~{pfamtbloutFileName}"
+
     String hmmerStdout = read_string(stdout())
   }
 
@@ -198,7 +198,7 @@ workflow hmmer {
       String? options
       File DBFile
       File sequenceFile
-      String dockerImageName = "quay.io/wshands/hmmer-docker:feature_hmmerdockernew"
+      String dockerImageName = "quay.io/wshands/hmmer-docker:1.0.0"
       String outputFileName = "~{hmmerCommand}_output.txt"
 
       # If you provide the -A multiple alignment file name in
@@ -248,16 +248,12 @@ workflow hmmer {
   output {
     Array[File] allOutputFiles = hmmerTask.allOutputFiles
 
-
-    # We cannot specify this as an output file becuase some commands
-    # such as hmmscan do not have the -A option to product the multiple
-    # alignment file
-    #File multipleAlignmentFile = hmmerTask.multipleAlignmentFile
-
+    File multipleAlignmentFile = hmmerTask.multipleAlignmentFile
     File hmmerOutput = hmmerTask.outputFile
     File tbloutFileFile = hmmerTask.tbloutFile
     File domtbloutFile = hmmerTask.domtbloutFile
     File pfamtbloutFile = hmmerTask.pfamtbloutFile
+
     String hmmerStdout = hmmerTask.hmmerStdout
   }
 }
