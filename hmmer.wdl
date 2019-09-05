@@ -84,22 +84,18 @@ task hmmerTask {
           if [[ ! "~{dollar}{commandOptions}" =~ "~{dollar}{option} " ]]
           then
               # E.g. --tblout is not in the command options string
-              printf "Option is not in options string"
+              printf "Option is not in options string yet\n"
               # test if the length of the string is non zero
               if [[ -n "~{dollar}{fileName}" ]]
               then
-                  # The option output file name variable has been set by the user
+                  # The option output file name has been provided as an individual input
+                  # (It could be the default name or one input by the user)
                   # E.g. tbloutFileName is set
-                  printf "Setting option ~{dollar}{option} file to %s in options string\n" "~{dollar}{fileName}"
+                  printf "Setting option ~{dollar}{option} file to ~{dollar}{fileName} in options string\n"
                   commandOptions="~{dollar}{commandOptions} ~{dollar}{option} ~{dollar}{fileName}"
               else
-                  # There is no output file set in the command options string
-                  # and the user has not set the option output file variable
-                  # so we must set the option output file to a default file name
-                  # since WDL cannot use an optional output file variable
-                  fileName="~{hmmerCommand}~{dollar}{option}OutputFile.txt"
-                  printf "Setting option ~{dollar}{option} file to %s in options string\n" "~{dollar}{fileName}"
-                  commandOptions="~{dollar}{commandOptions} ~{dollar}{option} ~{dollar}{fileName}"
+                  # We should never get here because we provide a default option file output name!!!
+                  printf "WARNING: Default file name for option ~{dollar}{option} not in options string not provided\n"
               fi
           else
               printf "Option is in options string"
@@ -109,16 +105,14 @@ task hmmerTask {
               then
                   # The option output file name variable has been set by the user
                   # E.g. tbloutFileName is set
-                  printf "Setting option ~{dollar}{option} file to %s in options string\n" "~{dollar}{fileName}"
+                  # so extract that name and use it as the name of the output file
+                  # the WDL code will try to find
+                  printf "Setting option ~{dollar}{option} file to ~{dollar}{fileName} in options string\n"
                   #https://stackoverflow.com/questions/14194702/replace-substring-with-sed
                   commandOptions=$(echo "~{dollar}{commandOptions}" | sed "s/~{dollar}{option}[[:space:]+][^[:space:]]*/~{dollar}{option} ~{dollar}{fileName}/g")
               else
-                  # The output file is set in the command options string
-                  # and the user has not set the option output file variable
-                  # Find out what the name of the output file is so we can
-                  # put it in the output section
-                  fileName=$(echo "~{dollar}{commandOptions}" | sed "s/.*~{dollar}{option}[[:space:]+]\([^[:space:]]*\)/\1/g")
-                  #commandOptions=$(echo "~{dollar}{commandOptions}" | sed "s/-A[[:space:]+][^[:space:]]*/-A ~{multipleAlignmentFileName}/g")
+                  # We should never get here because we provide a default option file output name!!!$
+                  printf "WARNING: Default file name for option ~{dollar}{option} in options string not provided\n"
               fi
           fi
           alloptions="~{dollar}{commandOptions}"
