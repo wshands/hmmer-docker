@@ -187,8 +187,9 @@ task hmmerTask {
       esac
 
       # Print the output to stdout; there should be an output file containing stdout
-      # TODO: somehow get Cromwell to include line feeds with line feeds
+      # TODO: somehow get Cromwell to include line feeds
       # https://unix.stackexchange.com/questions/164508/why-do-newline-characters-get-lost-when-using-command-substitution
+      printf "\n\n\nHMMER output\n\n\n"
       cat "~{outputFileName}"
 
   >>>
