@@ -6,6 +6,6 @@ workflows:
        - /hmmscan.json
      filters:
        branches:
-         - feature/**
+         - feature/test*
        tags:
          - /\d+\.\d+\.\d+/
