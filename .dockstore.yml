@@ -4,8 +4,11 @@ workflows:
      primaryDescriptorPath: /hmmer.wdl
      testParameterFiles:
        - /hmmscan.json
+       - /hmmsearch.json
      filters:
        branches:
-         - feature/test*
+         - master
+         - develop
+         - feature/**
        tags:
          - /\d+\.\d+\.\d+/
