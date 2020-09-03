@@ -4,4 +4,3 @@ workflows:
      primaryDescriptorPath: /hmmer.wdl
      testParameterFiles:
      - /hmmscan.json
-     name:
