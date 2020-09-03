@@ -1,0 +1,11 @@
+version: 1.2
+workflows:
+   - subclass: WDL
+     primaryDescriptorPath: /hmmer.wdl
+     testParameterFiles:
+       - /hmmscan.json
+     filters:
+       branches:
+         - feature/**
+       tags:
+         - /\d+\.\d+\.\d+/
